@@ -88,6 +88,21 @@ void FillTransferMatrix(const Eigen::MatrixXd& H, Eigen::MatrixXd& Mat, double B
 		}
 	}
 }
+void FillTransferMatrix(Eigen::MatrixXd& Mat, double h, double  J, double  Jd, double  Jt, double Beta = 0)
+{
+	int i, j;
+
+	Mat.fill(0);
+
+	double M11 = exp(Beta*J + Beta * h);
+	double M12 = exp(-Beta * J);
+	double M21 = exp(-Beta * J);
+	double M22 = exp(Beta * J - Beta * h);
+	Mat(0, 0) = M11;
+	Mat(1, 0) = M12;
+	Mat(0, 1) = M21;
+	Mat(1, 1) = M22;
+}
 
 void TextOut(const std::string& Text, int Number)
 {
@@ -119,21 +134,23 @@ double FindMagetization(double FreeNrg, double FreeNrgOld, double h_Step)
 double CalculateFreeNrg(double Value, double Beta)
 {
 	// F = - kT ln( lambda_max) free energy
-	double Res = -Beta * log(Value);
+	double Res = -(1/Beta) * log(Value);
 
 	return Res;
 }
 
 double FindFreeNrg(double h, double Beta, const double h_Step , double J, double  Jd, double Jt)
 {
-	const int n = 4;
+	const int n = 2;
 	double FreeNrg;
 
-	Eigen::MatrixXd H(n, n);
+//	Eigen::MatrixXd H(n, n);
 	Eigen::MatrixXd TransferM(n, n);
 
-	FillHamiltonian(H, h, J, Jd, Jt);
-	FillTransferMatrix(H, TransferM, Beta);
+//	FillHamiltonian(H, h, J, Jd, Jt);
+//	FillTransferMatrix(H, TransferM, Beta);
+	FillTransferMatrix(TransferM, h, J, Jd, Jt, Beta);
+
 
 	double Val = MaxEigenValue(TransferM);
 	FreeNrg = CalculateFreeNrg(Val, Beta);
@@ -163,13 +180,12 @@ double Step(double h , double Beta, double FreeNrgOld, const double h_Step , dou
 
 int main()
 {
-	const int n = 4;
 	const int Steps = 100;
-	double h = 0.1, Beta = 0.1;
-	double h_Step = 0.9;
+	double h = 0.1, Beta = 10;
+	double h_Step = 0.1;
 	double FreeNrg, FreeNrgOld;
 
-	double J = 1.0, Jd = 1.0, Jt = 1.0;
+	double J = -1.0, Jd = 1.0, Jt = 1.0;
 
 	FreeNrgOld = FindFreeNrg(h, Beta, h_Step, J, Jd, Jt);
 	
