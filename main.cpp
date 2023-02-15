@@ -25,18 +25,30 @@ void Eigenproblem(const Eigen::MatrixXd& Mat)
 	ces.compute(Mat);
 }
 
-double MaxEigenValue(const Eigen::MatrixXd& Mat)
+long double MaxEigenValue(const Eigen::MatrixXd& Mat)
 {
 	Eigen::EigenSolver<Eigen::MatrixXd> ces;
 	ces.compute(Mat);
 
 	//double Result = ces.eigenvalues().maxCoeff();
 	Eigen::VectorXcd Vec = ces.eigenvalues();
-	
-	double Result = std::real(Vec[0]);
+
+	int j;
+	double Result;
 	for (int i = 0; i < Vec.cols(); i++)
 	{
-		if (std::real(Vec[i])> Result)
+		if (std::imag(Vec[i]) == 0)
+		{
+			Result = std::real(Vec[i]);
+			break;
+		}
+		if (i == Vec.cols() - 1) return -1;
+	}
+	
+	for (int i = 0; i < Vec.cols(); i++)
+	{
+		if (std::imag(Vec[i]) == 0 && 
+			(std::real(Vec[i])> Result))
 			Result = std::real(Vec[i]);
 	}
 
@@ -94,14 +106,52 @@ void FillTransferMatrix(Eigen::MatrixXd& Mat, double h, double  J, double  Jd, d
 
 	Mat.fill(0);
 
-	double M11 = exp(Beta*J + Beta * h);
+	// Ising 2x2
+	/*double M11 = exp(Beta * J + Beta * h);
 	double M12 = exp(-Beta * J);
 	double M21 = exp(-Beta * J);
 	double M22 = exp(Beta * J - Beta * h);
+	
 	Mat(0, 0) = M11;
 	Mat(1, 0) = M12;
 	Mat(0, 1) = M21;
-	Mat(1, 1) = M22;
+	Mat(1, 1) = M22;*/
+
+	//triangle
+
+	double M11 = exp(Beta * (2 * J + Jd + Jt + 3 * h))
+		+ exp(Beta * (-2 * J + Jd + Jt + h)) 
+		+ exp(Beta * (-Jd - Jt + h)) + exp(Beta * (-Jd - Jt - h));
+
+	double M12 = exp(Beta * (2 * J + Jd - Jt + 3 * h))
+		+ exp(Beta * (-2 * J + Jd - Jt + h))
+		+ exp(Beta * (-Jd + Jt + h)) + exp(Beta * (-Jd + Jt - h));
+		
+	double M21 = +exp(Beta * (-Jd + Jt + h)) + exp(Beta * (-Jd + Jt - h)) +
+		+ exp(Beta * (-2 * J + Jd - Jt - h))
+		+ exp(Beta * (2 * J + Jd - Jt - 3 * h));
+
+	double M22 = +exp(Beta * (-Jd - Jt + h)) + exp(Beta * (-Jd - Jt - h)) +
+		+ exp(Beta * (-2 * J + Jd + Jt - h))
+		+ exp(Beta * (2 * J + Jd + Jt - 3 * h));
+		Mat(0, 0) = M11;
+		Mat(1, 0) = M12;
+		Mat(0, 1) = M21;
+		Mat(1, 1) = M22;
+
+		//saw tooth
+/*	double M11 = exp(Beta * (2 * J + Jd + 2 * h))
+		+ exp(Beta * (- Jd ));
+	double M12 = +exp(Beta * (-Jd + h)) + exp(Beta * (-2 * J + Jd - h));
+
+	double M21 = +exp(Beta * (-Jd - h)) + exp(Beta * (-2 * J + Jd + h));
+
+	double M22 = exp(Beta * (2 * J + Jd - 2 * h))
+		+ exp(Beta * (-Jd));
+	Mat(0, 0) = M11;
+	Mat(1, 0) = M12;
+	Mat(0, 1) = M21;
+	Mat(1, 1) = M22;*/
 }
 
 void TextOut(const std::string& Text, int Number)
@@ -131,10 +181,10 @@ double FindMagetization(double FreeNrg, double FreeNrgOld, double h_Step)
 	return Res;
 }
 
-double CalculateFreeNrg(double Value, double Beta)
+double CalculateFreeNrg(long double Value, double Beta)
 {
 	// F = - kT ln( lambda_max) free energy
-	double Res = -(1/Beta) * log(Value);
+	long double Res = -(1/Beta) * log(Value);
 
 	return Res;
 }
@@ -144,15 +194,13 @@ double FindFreeNrg(double h, double Beta, const double h_Step , double J, double
 	const int n = 2;
 	double FreeNrg;
 
-//	Eigen::MatrixXd H(n, n);
 	Eigen::MatrixXd TransferM(n, n);
 
-//	FillHamiltonian(H, h, J, Jd, Jt);
-//	FillTransferMatrix(H, TransferM, Beta);
+
 	FillTransferMatrix(TransferM, h, J, Jd, Jt, Beta);
 
 
-	double Val = MaxEigenValue(TransferM);
+	long double Val = MaxEigenValue(TransferM);
 	FreeNrg = CalculateFreeNrg(Val, Beta);
 
 	return FreeNrg;
@@ -185,7 +233,7 @@ int main()
 	double h_Step = 0.1;
 	double FreeNrg, FreeNrgOld;
 
-	double J = -1.0, Jd = 1.0, Jt = 1.0;
+	double J = -1.0, Jd = -0.0, Jt = -1.0;
 
 	FreeNrgOld = FindFreeNrg(h, Beta, h_Step, J, Jd, Jt);
 	
